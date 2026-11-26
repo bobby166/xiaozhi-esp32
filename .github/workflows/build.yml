@@ -8,11 +8,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build bread-compact-esp32
         run: |
+          . /opt/esp/idf/export.sh
           idf.py set-target esp32
           echo "CONFIG_BOARD_TYPE_BREAD_COMPACT_ESP32=y" >> sdkconfig.defaults
           echo "CONFIG_OLED_SSD1306_128X64=y" >> sdkconfig.defaults
           idf.py build
+          cd build && esptool.py --chip esp32 merge_bin -o bread-compact-esp32.bin @flash_args
       - uses: actions/upload-artifact@v4
         with:
           name: bread-compact-esp32
-          path: build/*.bin
+          path: build/bread-compact-esp32.bin
