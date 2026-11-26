@@ -3,7 +3,7 @@ on: [workflow_dispatch, push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: espressif/idf:release-v5.3
+    container: espressif/idf:latest
     steps:
       - uses: actions/checkout@v4
       - name: Build bread-compact-esp32
