@@ -56,7 +56,7 @@ static const char* NVIDIA_MODELS[] = {
 
 #define IDLE_VOICE_THRESHOLD     650
 #define SPEAKING_BARGE_THRESHOLD 2600
-#define SILENCE_STOP_MS          850     // तेज़ रिस्पॉन्स के लिए 0.85 सेकंड शांति पर तुरंत भेजेगा
+#define SILENCE_STOP_MS          850
 
 static const char *TAG = "MOTO_FAST";
 static i2s_chan_handle_t rx_handle = NULL;
@@ -191,13 +191,13 @@ char* speech_to_text(uint8_t *wav_buf, size_t wav_len) {
     char auth[160];
     snprintf(auth, sizeof(auth), "Bearer %s", GROQ_API_KEY);
 
-    esp_http_client_config_t config = {
-        .url = "https://api.groq.com/openai/v1/audio/transcriptions",
-        .method = HTTP_METHOD_POST,
-        .event_handler = http_event_handler,
-        .crt_bundle_attach = esp_crt_bundle_attach,
-        .timeout_ms = 12000,
-    };
+    esp_http_client_config_t config = {};
+    config.url = "https://api.groq.com/openai/v1/audio/transcriptions";
+    config.method = HTTP_METHOD_POST;
+    config.timeout_ms = 12000;
+    config.event_handler = http_event_handler;
+    config.crt_bundle_attach = esp_crt_bundle_attach;
+
     esp_http_client_handle_t client = esp_http_client_init(&config);
     esp_http_client_set_header(client, "Authorization", auth);
     esp_http_client_set_header(client, "Content-Type", content_type);
@@ -245,13 +245,13 @@ char* call_single_nvidia_model(const char *model_name, const char *user_text) {
     char auth[180];
     snprintf(auth, sizeof(auth), "Bearer %s", NVIDIA_API_KEY);
 
-    esp_http_client_config_t config = {
-        .url = "https://integrate.api.nvidia.com/v1/chat/completions",
-        .method = HTTP_METHOD_POST,
-        .event_handler = http_event_handler,
-        .crt_bundle_attach = esp_crt_bundle_attach,
-        .timeout_ms = 8000, // धीमे मॉडल पर 8 सेकंड से ज्यादा नहीं रुकेगा
-    };
+    esp_http_client_config_t config = {};
+    config.url = "https://integrate.api.nvidia.com/v1/chat/completions";
+    config.method = HTTP_METHOD_POST;
+    config.timeout_ms = 8000;
+    config.event_handler = http_event_handler;
+    config.crt_bundle_attach = esp_crt_bundle_attach;
+
     esp_http_client_handle_t client = esp_http_client_init(&config);
     esp_http_client_set_header(client, "Authorization", auth);
     esp_http_client_set_header(client, "Content-Type", "application/json");
@@ -300,12 +300,12 @@ void speak_tts(const char *text, bool allow_barge_in) {
              "https://translate.google.com/translate_tts?ie=UTF-8&q=%s&tl=hi&client=tw-ob",
              encoded);
 
-    esp_http_client_config_t config = {
-        .url = url,
-        .method = HTTP_METHOD_GET,
-        .crt_bundle_attach = esp_crt_bundle_attach,
-        .timeout_ms = 10000,
-    };
+    esp_http_client_config_t config = {};
+    config.url = url;
+    config.method = HTTP_METHOD_GET;
+    config.timeout_ms = 10000;
+    config.crt_bundle_attach = esp_crt_bundle_attach;
+
     esp_http_client_handle_t client = esp_http_client_init(&config);
     esp_http_client_set_header(client, "User-Agent", "Mozilla/5.0");
 
@@ -316,9 +316,8 @@ void speak_tts(const char *text, bool allow_barge_in) {
     esp_http_client_fetch_headers(client);
 
     esp_audio_simple_dec_register_default();
-    esp_audio_simple_dec_cfg_t dec_cfg = {
-        .dec_type = ESP_AUDIO_SIMPLE_DEC_TYPE_MP3,
-    };
+    esp_audio_simple_dec_cfg_t dec_cfg = {};
+    dec_cfg.dec_type = ESP_AUDIO_SIMPLE_DEC_TYPE_MP3;
     esp_audio_simple_dec_handle_t dec = NULL;
     esp_audio_simple_dec_open(&dec_cfg, &dec);
 
@@ -335,15 +334,15 @@ void speak_tts(const char *text, bool allow_barge_in) {
         int r = esp_http_client_read(client, (char *)mp3_buf, 2048);
         if (r <= 0) break;
 
-        esp_audio_simple_dec_raw_t raw = {
-            .buffer = mp3_buf,
-            .len = (uint32_t)r,
-        };
+        esp_audio_simple_dec_raw_t raw = {};
+        raw.buffer = mp3_buf;
+        raw.len = (uint32_t)r;
+
         while (raw.len > 0 && !barge_in_triggered) {
-            esp_audio_simple_dec_out_t out = {
-                .buffer = pcm_buf,
-                .len = 4096,
-            };
+            esp_audio_simple_dec_out_t out = {};
+            out.buffer = pcm_buf;
+            out.len = 4096;
+
             esp_audio_err_t ret = esp_audio_simple_dec_process(dec, &raw, &out);
             if (ret == ESP_AUDIO_ERR_OK && out.decoded_size > 0) {
                 int16_t *spk_samples = (int16_t *)pcm_buf;
